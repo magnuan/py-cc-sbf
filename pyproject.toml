@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0","numpy>=1.24" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py_cc_sbf_magnuan"
+version = "0.0.3"
+authors = [
+  { name="Magnus Andersen", email="Magnus.Andersen@norbit.com" },
+]
+description = "A small parser for Cloud Compare SBF files"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/pypa/sampleproject"
+Issues = "https://github.com/pypa/sampleproject/issues"
