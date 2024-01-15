@@ -3,10 +3,6 @@ Python3 CloudCompare SBF file parser
 
 ### Usage
 
-### Packaging instructions
-https://packaging.python.org/en/latest/tutorials/packaging-projects/
-
-
 ```python
 from py_cc_sbf import CcSbf
 #Read in data file
@@ -27,4 +23,6 @@ f_out.write_raw(meta,data,offset)
 ```
 
 
+### Packaging instructions
+https://packaging.python.org/en/latest/tutorials/packaging-projects/
 
