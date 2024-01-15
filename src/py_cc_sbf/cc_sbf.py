@@ -14,13 +14,12 @@ class CcSbf:
 
 
     def read_raw(self):
-    """ Read raw data from file. All data including XYZ in one 2D array of 32-bit floats.
+        """ Read raw data from file. All data including XYZ in one 2D array of 32-bit floats.
         XYZ Offset value as separate array
         Returns:
             fields: list (len=M) of field names
             data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
-            xyz_offset: 1D array (len=3) Offset values to be added to the X,Y and Z values in data 
-        """
+            xyz_offset: 1D array (len=3) Offset values to be added to the X,Y and Z values in data """
         #Read meta data from .sbf file
         with  open(self.meta_filename,'r') as f:
             #Line 1 [SBF] tag
@@ -73,13 +72,12 @@ class CcSbf:
     # Read raw data from field. All data including XYZ in one 2D array of 32-bit floats.
     # XYZ Offset value as separate array
     def read(self):
-    """ Read data from file. 
+        """ Read data from file. 
         Append offset and return XYZ values as 64-bit floats, and scalar fields as 32-bit floats
         Returns:
             fields: list of field names, length is equal to number of scalar fields nSF
             pos: 2D array (N x 3) of 64-bit values. Kartesian coordinates of each data point.
-            sf : 2D array (N x nSF) of 32-bit values. Scalar fields for each data point
-        """
+            sf : 2D array (N x nSF) of 32-bit values. Scalar fields for each data point """
         fields, raw_data, xyz_offset = self.read_raw()
         pos = raw_data[:,:3].astype('float64')+offset
         sf = raw_data[:,3:]
@@ -87,13 +85,12 @@ class CcSbf:
 
 
     def write_raw(self,fields,raw_data, xyz_offset):
-    """ Write raw data to file. All data including XYZ in one 2D array of 32-bit floats.
+        """ Write raw data to file. All data including XYZ in one 2D array of 32-bit floats.
         XYZ Offset value as separate array
         Input:
             fields: list (len=M) of field names
             data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
-            xyz_offset: 1D array (len=3) Offset values to be added to the X,Y and Z values in data 
-        """
+            xyz_offset: 1D array (len=3) Offset values to be added to the X,Y and Z values in data """
         #Write meta data to .sbf file
         no_pt = raw_data.shape[0]
         no_sf = raw_data.shape[1]-3
@@ -110,14 +107,13 @@ class CcSbf:
             f.write(pack('>2BQH3d28x', 42, 42, no_pt, no_sf, xyz_offset[0], xyz_offset[1], xyz_offset[2]))
             f.write(np.ascontiguousarray(np.ndarray.flatten(raw_data), dtype='>f4'))
    
-   def write(self,fields,pos,sf):
-    """ Write data to file. 
+    def write(self,fields,pos,sf):
+        """ Write data to file. 
         Set offset to mid dataset, and scalar fields as 32-bit floats
         Input:
             fields: list of field names, length is equal to number of scalar fields nSF
             pos: 2D array (N x 3) of 64-bit values. Kartesian coordinates of each data point.
-            sf : 2D array (N x nSF) of 32-bit values. Scalar fields for each data point
-        """
+            sf : 2D array (N x nSF) of 32-bit values. Scalar fields for each data point """
         xoff = (pos[:,0].max() + pos[:,0].min())/2
         yoff = (pos[:,1].max() + pos[:,1].min())/2
         zoff = (pos[:,2].max() + pos[:,2].min())/2
@@ -125,6 +121,5 @@ class CcSbf:
         pos32 = (pos-xyz_offset).astype('float32')
         sf32 = sf.astype('float32')
         data = np.concatenate([pos32,sf32],axis=1)
-        fields = 
         self.write_raw(['X','Y','Z']+fields, data, xyz_offset)
         
