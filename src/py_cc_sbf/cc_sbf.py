@@ -11,15 +11,9 @@ class CcSbf:
     def __init__(self, filename=None, **kwargs):
         self.meta_filename = filename
         self.data_filename = filename+'.data'
+        self.read_raw_meta()
 
-
-    def read_raw(self):
-        """ Read raw data from file. All data including XYZ in one 2D array of 32-bit floats.
-        XYZ Offset value as separate array
-        Returns:
-            fields: list (len=M) of field names
-            data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
-            xyz_offset: 1D array (len=3) Offset values to be added to the X,Y and Z values in data """
+    def read_raw_meta(self):
         #Read meta data from .sbf file
         with  open(self.meta_filename,'r') as f:
             #Line 1 [SBF] tag
@@ -41,7 +35,15 @@ class CcSbf:
             sf = ['X','Y','Z']      #X,Y,Z is implicit
             for ix in range(self.sf_count):
                 sf.append(d['SF%d'%(ix+1)].strip())
-            fields = sf
+            self.fields = sf
+
+    def read_raw(self):
+        """ Read raw data from file. All data including XYZ in one 2D array of 32-bit floats.
+        XYZ Offset value as separate array
+        Returns:
+            fields: list (len=M) of field names
+            data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
+            xyz_offset: 1D array (len=3) Offset values to be added to the X,Y and Z values in data """
         #Read raw data from .sbf.data file
         with open(self.data_filename,'rb') as f:
             #Read out binary header and sanity check
@@ -51,7 +53,7 @@ class CcSbf:
                 raise ValueError("Data file does not start with the magic numbers 42,42")
             if no_pt != self.points:
                 raise ValueError("Number of points in binary file does not match that of meta file")
-            if no_sf != len(fields)-3:
+            if no_sf != len(self.fields)-3:
                 raise ValueError("Number of scalar fields in binary file does not match that of meta file")
             if False:
                 if abs(offset_x + self.global_shift[0])>1e-3:
@@ -67,7 +69,7 @@ class CcSbf:
                 raise ValueError("Data file does not contain the correct amount of data")
             raw_data = d.reshape(no_pt,no_sf+3)
             xyz_offset = [offset_x,offset_y,offset_z]
-        return fields, raw_data, xyz_offset
+        return self.fields, raw_data, xyz_offset
     
     # Read raw data from field. All data including XYZ in one 2D array of 32-bit floats.
     # XYZ Offset value as separate array
@@ -79,7 +81,7 @@ class CcSbf:
             pos: 2D array (N x 3) of 64-bit values. Kartesian coordinates of each data point.
             sf : 2D array (N x nSF) of 32-bit values. Scalar fields for each data point """
         fields, raw_data, xyz_offset = self.read_raw()
-        pos = raw_data[:,:3].astype('float64')+offset
+        pos = raw_data[:,:3].astype('float64')+xyz_offset
         sf = raw_data[:,3:]
         return fields[3:], pos, sf
 
