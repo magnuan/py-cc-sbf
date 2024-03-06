@@ -11,7 +11,11 @@ class CcSbf:
     def __init__(self, filename=None, **kwargs):
         self.meta_filename = filename
         self.data_filename = filename+'.data'
-        self.read_raw_meta()
+        try:
+            self.read_raw_meta()
+        except FileNotFoundError:
+            #File not found, open for writing
+            pass
 
     def read_raw_meta(self):
         #Read meta data from .sbf file
@@ -37,9 +41,11 @@ class CcSbf:
                 sf.append(d['SF%d'%(ix+1)].strip())
             self.fields = sf
 
-    def read_raw(self):
+    def read_raw(self,cnt=-1):
         """ Read raw data from file. All data including XYZ in one 2D array of 32-bit floats.
         XYZ Offset value as separate array
+        Input:
+            cnt: Max number of smples to read, -1 for all
         Returns:
             fields: list (len=M) of field names
             data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
@@ -63,13 +69,28 @@ class CcSbf:
                     raise Warning("Mismatch between Y offset in meta and data file")
                 if abs(offset_z + self.global_shift[2])>1e-3:
                     raise Warning("Mismatch between Z offset in meta and data file")
-            
-            d = np.fromfile(f, dtype='>f4')
-            if len(d) != no_pt*(no_sf+3):
-                raise ValueError("Data file does not contain the correct amount of data")
-            raw_data = d.reshape(no_pt,no_sf+3)
+            if cnt<0:
+                d = np.fromfile(f, dtype='>f4')
+                if len(d) != no_pt*(no_sf+3):
+                    raise ValueError("Data file does not contain the correct amount of data")
+                raw_data = d.reshape(no_pt,no_sf+3)
+            elif cnt==0:
+                raw_data = np.array([])
+            else:
+                d = np.fromfile(f, dtype='>f4',count=cnt*(no_sf+3))
+                if len(d) !=cnt*(no_sf+3):
+                    raise ValueError("Data file does not contain the correct amount of data")
+                raw_data = d.reshape(cnt,no_sf+3)
             xyz_offset = [offset_x,offset_y,offset_z]
         return self.fields, raw_data, xyz_offset
+    
+    def read_raw_sample(self,index):
+        #Read raw data from .sbf.data file
+        with open(self.data_filename,'rb') as f:
+            header_len = 64
+            sample_len = 4*(self.sf_count+3)
+            d = np.fromfile(f, dtype='>f4',count=(self.sf_count+3),offset=header_len+(index*sample_len))
+        return d
     
     # Read raw data from field. All data including XYZ in one 2D array of 32-bit floats.
     # XYZ Offset value as separate array
@@ -86,27 +107,39 @@ class CcSbf:
         return fields[3:], pos, sf
 
 
-    def write_raw(self,fields,raw_data, xyz_offset):
+    def write_raw(self,fields,raw_data, xyz_offset, force_no_pt=None):
         """ Write raw data to file. All data including XYZ in one 2D array of 32-bit floats.
         XYZ Offset value as separate array
         Input:
             fields: list (len=M) of field names
             data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
             xyz_offset: 1D array (len=3) Offset values to be added to the X,Y and Z values in data """
+        if force_no_pt!=None:
+            self.points = force_no_pt
+        else:
+            self.points = raw_data.shape[0]
+        self.sf_count = raw_data.shape[1]-3
         #Write meta data to .sbf file
-        no_pt = raw_data.shape[0]
-        no_sf = raw_data.shape[1]-3
         with  open(self.meta_filename,'w') as f:
             #Line 1 [SBF] tag
             f.write('[SBF]\n')
-            f.write('Points=%d\n'%(no_pt))
+            f.write('Points=%d\n'%(self.points))
             f.write('GlobalShift=%f,%f,%f\n'%(-xyz_offset[0],-xyz_offset[1],-xyz_offset[2]))
-            f.write('SFCount=%d\n'%(no_sf))
+            f.write('SFCount=%d\n'%(self.sf_count))
             for ix,field in enumerate(fields[3:]):
                 f.write('SF%d=%s\n'%(ix+1,field))
             
         with open(self.data_filename,'wb') as f:
-            f.write(pack('>2BQH3d28x', 42, 42, no_pt, no_sf, xyz_offset[0], xyz_offset[1], xyz_offset[2]))
+            f.write(pack('>2BQH3d28x', 42, 42, self.points, self.sf_count, xyz_offset[0], xyz_offset[1], xyz_offset[2]))
+            f.write(np.ascontiguousarray(np.ndarray.flatten(raw_data), dtype='>f4'))
+    
+    def append_raw(self,raw_data):
+        """ Append raw data to file. All data including XYZ in one 2D array of 32-bit floats.
+        Input:
+            data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
+            """
+            
+        with open(self.data_filename,'ab') as f:
             f.write(np.ascontiguousarray(np.ndarray.flatten(raw_data), dtype='>f4'))
    
     def write(self,fields,pos,sf):
