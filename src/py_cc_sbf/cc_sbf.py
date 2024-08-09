@@ -41,11 +41,12 @@ class CcSbf:
                 sf.append(d['SF%d'%(ix+1)].strip())
             self.fields = sf
 
-    def read_raw(self,cnt=-1):
+    def read_raw(self,cnt=-1,off=0):
         """ Read raw data from file. All data including XYZ in one 2D array of 32-bit floats.
         XYZ Offset value as separate array
         Input:
             cnt: Max number of smples to read, -1 for all
+            off: Offset of first sample to read
         Returns:
             fields: list (len=M) of field names
             data :  2D array (N x M) of 32-bit values. N datapoints consisting of position (X,Y,Z) and M-3 scalar field values 
@@ -70,17 +71,15 @@ class CcSbf:
                 if abs(offset_z + self.global_shift[2])>1e-3:
                     raise Warning("Mismatch between Z offset in meta and data file")
             if cnt<0:
-                d = np.fromfile(f, dtype='>f4')
-                if len(d) != no_pt*(no_sf+3):
+                d = np.fromfile(f, dtype='>f4',offset=4*off*(no_sf+3))
+                if len(d) != (no_pt-off)*(no_sf+3):
                     raise ValueError("Data file does not contain the correct amount of data")
                 raw_data = d.reshape(no_pt,no_sf+3)
             elif cnt==0:
                 raw_data = np.array([])
             else:
-                d = np.fromfile(f, dtype='>f4',count=cnt*(no_sf+3))
-                if len(d) !=cnt*(no_sf+3):
-                    raise ValueError("Data file does not contain the correct amount of data")
-                raw_data = d.reshape(cnt,no_sf+3)
+                d = np.fromfile(f, dtype='>f4',count=cnt*(no_sf+3), offset=4*off*(no_sf+3))
+                raw_data = d.reshape(len(d)//(no_sf+3),no_sf+3)
             xyz_offset = [offset_x,offset_y,offset_z]
         return self.fields, raw_data, xyz_offset
     
